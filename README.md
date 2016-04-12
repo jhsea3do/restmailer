@@ -13,7 +13,8 @@ $ printf '
     "pass": "xxxxxx"
   } 
 }
-' > conf.json.1
+' > conf.json
+
 $ sh bin/start
 
 $ curl -X POST -H 'content-Type: application/json' \
