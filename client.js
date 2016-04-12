@@ -43,10 +43,10 @@ var f1 = function(conf, subject, text, tos) {
       [ 'From: ', conf.from ].join(''),
       [ 'To: ', conf.to ].join(''),
       [ 'Subject: ', ( subject || conf.subject || 'no title') ].join(''),
-      '',
       ( text || String( fs.readFileSync( conf.file ) ) )
     ].join('\r\n');
-    // console.log('plain', plain);
+    // console.log("sent ==> \n");
+    // console.log(plain);
     logs['mail'] = plain;
     var f = sts( plain );
     f.pipe( client.message(function() {
