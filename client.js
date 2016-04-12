@@ -1,73 +1,58 @@
-var f1 = function(conf, subject, text, tos) {
-  var smtp = require('smtp-protocol');
-  var fs   = require('fs');
-  var sts  = require('string-to-stream');
-  if( tos != undefined )  { conf.to = tos; }
-  var logs = {};
-  var stream = smtp.connect( conf.host, conf.port, function( client ) {
-    client.ehlo( conf.agent_host, function() {
-      // console.log('ehlo', arguments);
-      logs['ehlo'] = arguments;
-    } );
-    client.helo( conf.from_host, function( err, code, lines ) {
-      // console.log('helo', arguments);
-      logs['helo'] = arguments;
-    });
-    client.login( conf.user, conf.pass, 'PLAIN', function() {
-      // console.log('login', arguments);
-      logs['login'] = arguments;
-    })
-    client.on('greeting', function(code, host) {
-      // console.log('greeting', arguments);
-      logs['greeting'] = arguments;
-    })
-    client.from( conf.from, function() {
-      // console.log('from', arguments);
-      logs['from'] = arguments;
-    } );
-    // console.log('TO', conf.to.split(',|;')[0]);
-    conf.to.split(/,|;/).map(function( to ) {
-      var mailto = to.replace(/\s+/, '')
-      // console.log( 'Mail To: ', mailto );
-      client.to( mailto, function() {
-        // console.log('to', arguments);
-        logs['from'] = arguments;
-      } );
-    })
-    client.data(function() {
-      // console.log('data', arguments);
-      logs['data'] = arguments;
-    } );
-    // var f = fs.createReadStream( conf.file );
-    var plain = [
-      [ 'From: ', conf.from ].join(''),
-      [ 'To: ', conf.to ].join(''),
-      [ 'Subject: ', ( subject || conf.subject || 'no title') ].join(''),
-      ( text || String( fs.readFileSync( conf.file ) ) )
-    ].join('\r\n');
-    // console.log("sent ==> \n");
-    // console.log(plain);
-    logs['mail'] = plain;
-    var f = sts( plain );
-    f.pipe( client.message(function() {
-      console.log('message', arguments);
-      logs['message'] = arguments;
-    }) );
-    f.on('end', function() {
-      client.quit(function() {
-        // console.log('quit', arguments);
-        logs['quit'] = arguments;
-      });
-      console.log('logs', logs);
-      client.stream.end();
-    });
-    
+var fx = function(conf, data) {
+  var nodemailer = require('nodemailer');
+  var transporter = nodemailer.createTransport( conf );
+  /*
+  transporter.verify(function(error, success) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log('Server is ready to take our messages');
+    }
   });
-  return logs;
+  */
+  var template = {};
+  var option   = {};
+  ['from', 'to', 'subject', 'text', 'attachments', 'raw'].map(function(k) {
+    if(undefined != data[k]) { option[k] = data[k]; }
+  });
+  var from     = option.from || conf.from;
+  var to       = option.to   || conf.to;
+  if( option.raw != undefined ) {
+    var raw = [
+      "From: " + from,
+      "To: " + to,
+      "Subject: " + option.subject,
+      option.raw
+    ].join("\r\n");
+    option.raw = raw;
+  }
+  if( data.template != undefined ) {
+    template = data.template
+  }
+  var sender = transporter.templateSender(template, {
+    "from": option.from || conf.from
+  });
+  var oncomplete = function(err, data) {
+    if(err) { console.log("error", err); }
+    else { console.log("sent", data); }
+  };
+  // console.log( option );
+  sender( option, data, oncomplete );
 }
 
+
+
 module.exports = function( conf ) {
-  return function( subject, text, tos ) {
-    return f1(conf, subject, text, tos);
+  return function() {
+    if(arguments.length == 1) {
+      return fx(conf, arguments[0]);
+    } else {
+      var subject = arguments[0], text = arguments[1], to = arguments[2];
+      if( typeof text == 'string') {
+        return fx(conf, { "subject": subject, "text": text, "to": to });
+      } else {
+        return fx(conf, { "subject": subject, "raw": text.raw, "to": to });
+      }
+    }
   };
 }

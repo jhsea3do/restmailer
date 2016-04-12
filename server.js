@@ -15,25 +15,32 @@ var ctrl_api = function( req, res, next ) {
   if( '/api/mailto' == pathname ) {
     var client = app.get('client');
     if( client == undefined ) {
-      res.status(500).json({'message': 'client not set'}).end();
+      res.status(500).json({'message': 'Client Not Set'}).end();
       return;
     } else {
       try {
-        var data = req.body || {};
+        var data = req.body || { 
+          "subject": "no title", 
+          "text": "no text no text no text no text", 
+          "to": new Buffer('amhzZWEzZG9AZ21haWwuY29t', 'base64').toString("ascii") 
+        };
         var smtp = app.get('smtp');
-        console.log( smtp );
-        var logs = client(smtp)( data.subject, data.message, data.rcpts );
-        res.status(201).json({'message': 'sent OK', 'logs': logs }).end();
+        if(data.message != undefined && data.rcpts != undefined) {
+          client(smtp)( data.subject, data.message, data.rcpts );
+        } else {
+          client(smtp)( data );
+        }
+        res.status(201).json({'message': 'sent OK'}).end();
       } catch(e) {
         console.error(e);
-        res.status(500).json({'message': 'sent failed'}).end();
+        res.status(500).json({'message': 'sent Error'}).end();
       }
       return;
     }
   }
 
   if( 'get' == method && pathname.startsWith('/api') ) {
-    res.status(404).json({'message': 'API not found'}).end();
+    res.status(404).json({'message': 'Api Not Found'}).end();
     return;
   }
 

@@ -1,4 +1,5 @@
 node_modules
 conf.json
-png.eml
+mbp.eml
+img.eml
 *.log
